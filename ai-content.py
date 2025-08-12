@@ -1,14 +1,31 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request as flask_request
 from datetime import datetime
 import json
 import random
+from payment_utils import check_usdt_payment, generate_payment_request
 
 app = Flask(__name__)
 
 def handler(request):
-    """Vercel serverless function for AI Content API - $0.08 per call"""
+    """Vercel serverless function for AI Content API - $0.08 USDT per call"""
     
     cost = 0.08
+    
+    # Check if payment verification is requested
+    tx_hash = flask_request.args.get('tx_hash')
+    
+    if not tx_hash:
+        return jsonify(generate_payment_request(cost, "ai-content"))
+    
+    # Verify USDT payment
+    payment_status = check_usdt_payment(cost, tx_hash)
+    
+    if payment_status.get("status") != "paid":
+        return jsonify({
+            "error": "Payment not verified",
+            "payment_status": payment_status,
+            "required_payment": generate_payment_request(cost, "ai-content")
+        })
     
     content_topics = [
         "The Future of API Development and Serverless Architecture",
